@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>CANYON RUN — golden-hour canyon flight</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #201209; }
+  body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; color: #e8f2ff; }
+  #app, #app canvas { display: block; width: 100vw; height: 100vh; }
+
+  /* ---- HUD: lit instruments over the 3D view ---- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    font-family: Consolas, "Courier New", monospace; }
+  .hud-label { font-size: 11px; letter-spacing: 2px; color: #9fd0ff; opacity: 0.85; }
+  .hud-big { font-size: 22px; font-weight: 700; color: #fff; text-shadow: 0 0 8px rgba(120,200,255,.8); }
+  .hud-huge { font-size: 40px; font-weight: 800; line-height: 1; color: #fff;
+    text-shadow: 0 0 10px rgba(120,200,255,.9), 0 0 22px rgba(120,200,255,.45); }
+  .hud-unit { font-size: 11px; letter-spacing: 2px; color: #9fd0ff; }
+  .panel { background: rgba(8, 14, 26, 0.55); border: 1px solid rgba(140, 210, 255, 0.35);
+    border-radius: 10px; backdrop-filter: blur(3px); padding: 10px 12px; }
+
+  .hud-top { position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 16px; padding: 8px 18px; }
+  .fuel-wrap { display: flex; align-items: center; gap: 8px; }
+  .fuel-bar { width: 180px; height: 12px; background: rgba(255,255,255,.15);
+    border: 1px solid rgba(140,210,255,.4); border-radius: 6px; overflow: hidden; }
+  .fuel-fill { height: 100%; width: 100%; background: #37d67a;
+    box-shadow: 0 0 10px rgba(55,214,122,.8); transition: width .2s; }
+  .fuel-fill.mid { background: #ffb020; box-shadow: 0 0 10px rgba(255,176,32,.8); }
+  .fuel-fill.low { background: #ff3b30; box-shadow: 0 0 10px rgba(255,59,48,.9); }
+
+  .hud-left { position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .hud-right { position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .vbar { width: 14px; height: 110px; background: rgba(255,255,255,.12);
+    border: 1px solid rgba(140,210,255,.4); border-radius: 7px; overflow: hidden; position: relative; }
+  .vbar-fill { position: absolute; bottom: 0; left: 0; right: 0; height: 0%;
+    background: linear-gradient(#7dd8ff, #2a9df4); box-shadow: 0 0 8px rgba(80,180,255,.8); }
+  .vbar-fill.thr { background: linear-gradient(#ffd27d, #ff8a20); box-shadow: 0 0 8px rgba(255,160,40,.8); }
+
+  .hud-centre { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .horizon { width: 170px; height: 170px; border-radius: 50%; overflow: hidden; position: relative;
+    border: 2px solid rgba(140,210,255,.6); background: #0a1420;
+    box-shadow: 0 0 18px rgba(80,160,255,.35), inset 0 0 24px rgba(0,0,0,.5); }
+  .horizon-inner { position: absolute; width: 340px; height: 340px; left: -85px; top: -85px; }
+  .horizon-sky { position: absolute; top: 0; left: 0; right: 0; height: 50%;
+    background: linear-gradient(#7db8e8, #bcd9f2); }
+  .horizon-ground { position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
+    background: linear-gradient(#8a5f36, #4a2f1a); }
+  .pitch-ladder { position: absolute; inset: 0; }
+  .ladder-line { position: absolute; left: 50%; transform: translateX(-50%); width: 76px;
+    border-top: 2px solid rgba(255,255,255,.85); color: #fff; font-size: 11px;
+    text-align: right; padding-right: 4px; text-shadow: 0 1px 2px #000; }
+  .horizon-marker { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    z-index: 2; width: 46px; height: 12px; }
+  .horizon-marker::before { content: ""; position: absolute; left: 0; right: 0; top: 5px;
+    height: 2px; background: #ffd23e; box-shadow: 0 0 6px rgba(255,210,62,.9); }
+  .horizon-marker::after { content: ""; position: absolute; left: 50%; top: 0; width: 4px;
+    height: 12px; margin-left: -2px; background: #ffd23e; box-shadow: 0 0 6px rgba(255,210,62,.9); }
+  .compass { width: 480px; height: 30px; overflow: hidden; position: relative;
+    background: rgba(8,14,26,.55); border: 1px solid rgba(140,210,255,.35); border-radius: 8px; }
+  .compass-strip { position: absolute; top: 0; height: 100%; width: 2160px; }
+  .compass-tick { position: absolute; top: 0; height: 12px; border-left: 1px solid rgba(255,255,255,.7);
+    padding-left: 4px; font-size: 12px; color: #cfe8ff; line-height: 30px; height: 30px; }
+
+  .callout { position: absolute; top: 33%; left: 50%; transform: translate(-50%,-50%) scale(.92);
+    font-size: 44px; font-weight: 800; letter-spacing: 3px; color: #ffe9a8; opacity: 0;
+    text-shadow: 0 0 14px rgba(255,200,80,.9), 0 2px 4px #000; transition: opacity .18s, transform .18s;
+    white-space: nowrap; background: rgba(8,14,26,.45); padding: 6px 24px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.18); }
+  .callout.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  .callout.good { color: #7dff9e; text-shadow: 0 0 14px rgba(80,255,140,.9), 0 2px 4px #000; }
+  .callout.warn { color: #ff5a4a; text-shadow: 0 0 14px rgba(255,70,50,.9), 0 2px 4px #000; }
+
+  /* ---- Screens: title, pause, crash, landing ---- */
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center;
+    justify-content: center; background: rgba(8,10,18,.55); backdrop-filter: blur(3px);
+    opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+  .overlay .card { background: rgba(12,18,30,.85); border: 1px solid rgba(140,210,255,.35);
+    border-radius: 16px; padding: 30px 38px; text-align: center; max-width: 600px;
+    box-shadow: 0 12px 48px rgba(0,0,0,.6); }
+  .overlay h1 { margin: 0 0 8px; font-size: 52px; letter-spacing: 8px; color: #ffd9a0;
+    text-shadow: 0 0 18px rgba(255,180,90,.7); font-family: "Segoe UI", system-ui, sans-serif; }
+  .overlay h1.red { color: #ff6a5a; text-shadow: 0 0 18px rgba(255,70,50,.7); }
+  .overlay h1.green { color: #7dff9e; text-shadow: 0 0 18px rgba(80,255,140,.6); }
+  .overlay p { margin: 10px 0; font-size: 16px; line-height: 1.55; color: #d6e6ff; }
+  .overlay .keys { font-size: 14px; color: #9fd0ff; line-height: 2; }
+  kbd { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.35);
+    border-radius: 5px; padding: 1px 7px; font-family: Consolas, monospace; font-size: 13px; }
+  .btn { margin-top: 16px; background: #ff8a20; color: #1a1206; font-weight: 800; font-size: 19px;
+    letter-spacing: 2px; padding: 13px 34px; border: none; border-radius: 11px; cursor: pointer;
+    box-shadow: 0 4px 18px rgba(255,140,30,.5); }
+  .btn:hover { filter: brightness(1.12); }
+  .fine { font-size: 13px; color: #8fb4d8; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="hud"></div>
+
+<div class="overlay" id="title-screen">
+  <div class="card">
+    <h1>CANYON RUN</h1>
+    <p>Golden-hour canyon flight. Thread the glowing rings, mind the fuel,<br>then bring her home onto the runway.</p>
+    <p class="keys">
+      <kbd>&uarr;</kbd><kbd>&darr;</kbd> / <kbd>W</kbd><kbd>S</kbd> pitch &nbsp;·&nbsp;
+      <kbd>&larr;</kbd><kbd>&rarr;</kbd> / <kbd>A</kbd><kbd>D</kbd> bank &amp; turn<br>
+      <kbd>Shift</kbd> throttle up &nbsp;·&nbsp; <kbd>Ctrl</kbd> throttle down &nbsp;·&nbsp;
+      <kbd>Space</kbd> airbrake<br>
+      Mouse steers gently &nbsp;·&nbsp; <kbd>P</kbd> pause &nbsp;·&nbsp; <kbd>R</kbd> restart &nbsp;·&nbsp; <kbd>M</kbd> mute
+    </p>
+    <button class="btn" id="btn-fly">FLY</button>
+    <p class="fine">10 rings per sortie &middot; rings add fuel &middot; land before the tanks run dry.<br>
+    Best on desktop Chrome. Headphones on: the engine is procedural.</p>
+  </div>
+</div>
+
+<div class="overlay" id="pause-screen">
+  <div class="card">
+    <h1>PAUSED</h1>
+    <p>The canyon waits. The sun does not.</p>
+    <button class="btn" id="btn-resume">RESUME</button>
+  </div>
+</div>
+
+<div class="overlay" id="crash-screen">
+  <div class="card">
+    <h1 class="red">CRASHED</h1>
+    <p id="crash-reason">TERRAIN STRIKE</p>
+    <p id="crash-stats"></p>
+    <button class="btn" id="btn-again">FLY AGAIN</button>
+  </div>
+</div>
+
+<div class="overlay" id="landed-screen">
+  <div class="card">
+    <h1 class="green">SORTIE COMPLETE</h1>
+    <p>Wheels down on the runway. The canyon run is yours.</p>
+    <p id="landed-stats"></p>
+    <button class="btn" id="btn-next">NEXT SORTIE</button>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
