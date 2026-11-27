@@ -1,6 +1,7 @@
 // audio.js — procedural WebAudio for CANYON RUN.
 // One file, one job: every sound is synthesized, no audio files.
 // Engine drone, wind, ring chime, low-fuel beep and crash thud.
+// Everything is synthesized at runtime: no audio files, no network.
 import { CONFIG } from './config.js';
 
 // White noise loop, the raw material for wind and the crash thud.
