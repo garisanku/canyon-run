@@ -1,6 +1,7 @@
 // terrain.js — the golden-hour desert canyon for CANYON RUN.
 // One file, one job: the heightfield, the river, the road, the runway,
 // and every rock, cactus and hangar in the valley.
+// The strip is flattened into the floor so a rolling jet never snags on noise.
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { fractalNoise2D, valueNoise2D, mulberry32 } from './random.js';
