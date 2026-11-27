@@ -1,5 +1,7 @@
 // random.js — a seeded random generator for CANYON RUN.
 // One file, one job: an integer seed in, a deterministic sequence out.
+// Terrain, rings and scatter all draw from one stream, in a fixed order,
+// so a seed rebuilds the canyon bit for bit.
 // The same seed always builds the same canyon, the same ring course and
 // the same scatter of rocks and cacti, so every ?shot= state is reproducible.
 export function mulberry32(seed) {
