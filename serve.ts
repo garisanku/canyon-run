@@ -1,6 +1,7 @@
 // serve.ts — a tiny static file server for play-testing CANYON RUN.
 // Serves the repository directory on port 8080:
 //   node serve.ts [--port 8080]
+// Local play-testing only: it serves nothing outside this repository.
 // Then open http://localhost:8080/game/ in desktop Chrome.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
