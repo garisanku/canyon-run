@@ -1,6 +1,7 @@
 // sky.js — the golden-hour sky for CANYON RUN.
 // One file, one job: gradient dome, low sun, drifting clouds, warm fog
 // and the light that makes the sandstone glow at sunset.
+// The sun sits low in the west, so the runway approach flies into the sunset.
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { mulberry32 } from './random.js';
