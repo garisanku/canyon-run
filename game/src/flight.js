@@ -26,6 +26,7 @@ export function createFlightState(cfg = CONFIG) {
     engineOut: false,
     verticalSpeed: 0, // m/s, positive = climbing
     stalled: false,
+    hasFlown: false, // true once the jet has left the runway surface
     elapsed: 0, // seconds since takeoff
   };
 }
@@ -44,6 +45,7 @@ export function resetForTakeoff(state, runwayX, cfg = CONFIG) {
   state.engineOut = false;
   state.verticalSpeed = 0;
   state.stalled = false;
+  state.hasFlown = false;
   state.elapsed = 0;
 }
 
@@ -108,6 +110,14 @@ export function stepFlight(state, input, dt, world, cfg = CONFIG) {
   if (state.stalled) state.position.y -= (jet.minSpeed - state.speed) * 0.22 * dt;
   state.verticalSpeed = (state.position.y - prevY) / Math.max(dt, 0.0001);
 
+  // Once the jet has left the runway surface it has flown: a later
+  // touchdown is a landing, not the takeoff roll. (A single frame's
+  // height cannot tell the two apart — a gentle landing crosses the
+  // strip just as slowly as a rolling jet does.)
+  if (state.position.y > world.runway.height + jet.groundClearance + 0.5) {
+    state.hasFlown = true;
+  }
+
   // Fuel drains with throttle; empty means engine-out gliding.
   if (!state.engineOut) {
     state.fuel -= (cfg.fuel.drainBase + cfg.fuel.drainThrottle * state.throttle) * dt;
@@ -119,16 +129,16 @@ export function stepFlight(state, input, dt, world, cfg = CONFIG) {
   state.elapsed += dt;
 
   // Touchdown: on the strip, slow, gentle, wings level — but only when
-  // the jet is actually coming down onto it, not while it rolls on it.
+  // the jet has actually flown. A jet that never left the surface is
+  // still on its takeoff roll: clamp it to the strip, no sink, no crash.
   const r = world.runway;
   const overRunway =
     Math.abs(state.position.x - r.x) < cfg.landing.halfWidth &&
     state.position.z > r.zStart &&
     state.position.z < r.zEnd;
   if (overRunway && state.position.y <= r.height + jet.groundClearance) {
-    const wasAirborne = prevY > r.height + jet.groundClearance + 0.5;
-    if (!wasAirborne) {
-      // Takeoff roll or taxi: stay on the strip, no sink, no crash.
+    if (!state.hasFlown) {
+      // Takeoff roll: stay on the strip, no sink, no crash.
       state.position.y = r.height + jet.groundClearance;
       state.verticalSpeed = 0;
       return { status: 'flying' };
