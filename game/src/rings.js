@@ -1,6 +1,8 @@
 // rings.js — the glowing ring course for CANYON RUN.
 // One file, one job: where the rings sit, when the jet threads one,
 // and what a pass is worth.
+// Rings sit on the valley centreline and shrink a little each sortie,
+// so later sorties ask for tighter flying.
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { centerlineX } from './terrain.js';
