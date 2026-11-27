@@ -1,6 +1,8 @@
 // input.js — keyboard and mouse for CANYON RUN.
 // One file, one job: read the pilot's hands and turn them into one
 // control vector plus edge-triggered actions (pause, restart, mute).
+// Mouse steering is a nudge, not a yoke: it decays, so the keyboard
+// stays the primary control.
 // Arrow keys or WASD pitch and roll, Shift/Ctrl throttle, Space airbrake,
 // R restart, P pause, M mute, Enter starts a sortie.
 
